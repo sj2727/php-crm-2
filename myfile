@@ -1,0 +1,228 @@
+
+<?php
+session_start();
+class Database{
+     private $connection;
+     var $op = array();
+     function __construct()
+     {
+         $this->connect_db();
+     }
+
+     public function connect_db(){
+        $this->connection = mysqli_connect("localhost", "root", "", "crmblack"); 
+         if(mysqli_connect_error()){
+             die("Database Connection Failed" . mysqli_connect_error() . mysqli_connect_errno());
+         }
+     }
+
+     public function sanitize($var){
+        $return = mysqli_real_escape_string($this->connection, $var);
+        return $return;
+     }
+
+     public function insert($table, $data) {
+        $key = array_keys($data);
+        $val = array_values($data);
+        $sql = "INSERT INTO $table (" . implode(', ', $key) . ") ". "VALUES ('" . implode("', '", $val) . "')";
+        $res = mysqli_query($this->connection, $sql);
+        if ($res) {
+            $op[0] = "success";
+            $op[1] = $res;
+        }else{
+            $op[0] = 'error';
+            $op[1] = mysqli_error($this->connection);
+        }
+       return $op;
+    }
+
+    public function update($table, $data, $where) {
+        $cols = array();
+        foreach ($data as $key => $val) {
+            $cols[] = strtolower($key)."= '$val'";
+        }
+        $sql = "UPDATE $table SET " . implode(', ', $cols) . " WHERE $where";
+        $res = mysqli_query($this->connection, $sql);
+        if ($res) {
+            $op[0] = "success";
+            $op[1] = $res;
+            $op[2] = $sql;
+        }else{
+            $op[0] = 'error';
+            $op[1] = mysqli_error($this->connection);
+            $op[2] = $sql;
+        }
+       return $op;
+    }
+
+
+    public function tablecreate($tablename)
+    {
+        $sql = "CREATE TABLE $tablename (
+            `id` int NOT NULL AUTO_INCREMENT,
+            `name` varchar(255) DEFAULT NULL,
+            `phone` varchar(255) DEFAULT NULL,
+            `company` varchar(255) DEFAULT NULL,
+            `role` varchar(255) DEFAULT NULL,
+            `email` varchar(255) DEFAULT NULL,
+            `industry` varchar(255) DEFAULT NULL,
+            `address` longtext,
+            `city` varchar(255) NOT NULL,
+            `zipcode` varchar(255) NOT NULL,
+            `emp_range` varchar(255) DEFAULT NULL,
+            `asset` varchar(255) DEFAULT NULL,
+            `disposition` varchar(255) DEFAULT NULL,
+            `timezone` varchar(255) DEFAULT NULL,
+            `create_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `agent_id` varchar(255) DEFAULT NULL,
+            `status` varchar(255) DEFAULT NULL,
+            `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `id` (`id`)
+           )";
+           $res = mysqli_query($this->connection, $sql);
+           if ($res) {
+                $op[0] = "success";
+                $op[1] = $res;
+            }else{
+                $op[0] = 'error';
+                $op[1] = mysqli_error($this->connection);
+            }
+           return $op;
+    }
+
+    public function read($table, $where=null){
+        $sql = "SELECT * FROM $table ";
+        
+        if($where){ $sql .= $where;/*.($_SESSION['priority'] != 'superadmin'?' AND imp = 0 ':'');*/}
+        /*else{
+            $sql .= ($_SESSION['priority'] != 'superadmin'?' WHERE imp = 0 ':'');
+        }*/
+       //$sql."<br>";
+	$res = mysqli_query($this->connection, $sql);
+        if ($res) {
+            $op[0] = "success";
+            $op[1] = $res;
+            $op[2] = $sql;
+        }else{
+            $op[0] = 'error';
+            $op[1] = mysqli_error($this->connection).$sql;
+            $op[2] = $sql;
+        }
+       return $op;
+    }
+
+    public function delete($table,$id){
+        $sql = "DELETE FROM $table WHERE id = $id";
+        $res = mysqli_query($this->connection, $sql);
+        if ($res) {
+            $op[0] = "success";
+            $op[1] = $res;
+        }else{
+            $op[0] = 'error';
+            $op[1] = mysqli_error($this->connection);
+        }
+       return $op;
+    }
+
+    public function find($table,$what){
+        $sql = "SELECT * FROM $table WHERE $what";
+        $res = mysqli_query($this->connection, $sql);
+        $find = mysqli_fetch_all($res, MYSQLI_ASSOC);
+        if($find){
+            $op = TRUE;
+        }else{
+            $op = FALSE;
+        }
+        return $op;
+    }
+
+    public function query($query)
+    { 
+        $res = mysqli_query($this->connection, $query);
+        if ($res) {
+            $op[0] = "success";
+            $op[1] = $res;
+        }else{
+            $op[0] = 'error';
+            $op[1] = mysqli_error($this->connection);
+        }
+       return $op;
+    }
+
+
+    public function max($table,$where=null){
+        $sql= "SELECT MAX(id) FROM $table";
+        if($where){ $sql .= $where;}
+        $res = mysqli_query($this->connection, $sql);
+        $find = mysqli_fetch_all($res, MYSQLI_ASSOC);
+        return $find[0]['MAX(id)'];
+    }
+
+    public function min($table,$where=null){
+        $sql= "SELECT MIN(id) FROM $table";
+        if($where){ $sql .= $where;}
+        $res = mysqli_query($this->connection, $sql);
+        $find = mysqli_fetch_all($res, MYSQLI_ASSOC);
+        return $find[0]['MIN(id)'];
+    }
+    
+    public function count($table,$where=null )
+    {
+        $sql= "SELECT COUNT(id) FROM $table";
+        if($where){ $sql .= $where;}
+        $res = mysqli_query($this->connection, $sql);
+        if($res){
+        $find = mysqli_fetch_all($res, MYSQLI_ASSOC);
+        return $find[0]['COUNT(id)'];
+        }else{
+            return 0;
+        }
+    }
+
+    public function createform($table,$session)
+    {   $keys = array();
+        $data = array();
+        $sql= "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '".$table."' ";
+        $res = mysqli_query($this->connection, $sql);
+        $op = mysqli_fetch_all($res, MYSQLI_ASSOC);
+        $json = json_decode(json_encode($op));
+        foreach ($json as $key => $value) {
+            foreach ($value as $k => $v) {  
+                if ($k == "COLUMN_NAME") {
+                    array_push($keys,$v);
+                }elseif($k == "DATA_TYPE"){
+                    array_push($data,$v);     
+                }
+            }
+        }
+        $out = '';
+        foreach ($keys as $key => $value) {
+        $out .= '<input type="'.($value == "id"?'hiddden':
+                             ($value == 'password'?'password':
+                             ($value == 'image'?'file':
+                             ($value == 'email'?'email':'text')))).'" 
+                     name="'.$value.'"
+                     style="display:'.($value == 'id' && $session == "" ?"none": 
+                                      ($value == 'status'?'none' : "block")).';">';
+        }
+        return $out;
+    }
+
+    public function url(){
+        // return sprintf(
+        //   "%s://%s%s",
+        //   isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off' ? 'https' : 'http',
+        //   $_SERVER['SERVER_NAME'],
+        //   $_SERVER['REQUEST_URI']
+        // );
+        return $link = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] 
+        === 'on' ? "https" : "http") . 
+        "://" . $_SERVER['HTTP_HOST'] . 
+        $_SERVER['REQUEST_URI'];
+      }
+
+ }
+  
+ $db = new Database();
+ ?>
