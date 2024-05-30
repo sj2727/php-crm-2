@@ -40,15 +40,7 @@ Database File
 ```Database
 C:\wamp64\www\[Your Folder name]\Database.sql
 ```
-Default user ID Password 
-User ID : 
-```User
-admin@admin.com
-```
-Password :
-```pass
-admin
-```
+
 add Database Conn
 ```Conn
 [Your Folder]\panel\connection.php
@@ -63,3 +55,4 @@ $this->connection = mysqli_connect("host name[ by default localhost]", "username
          }
      }
 ```
+Author : Suraj Jeughale
